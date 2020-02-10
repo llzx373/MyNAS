@@ -1,10 +1,9 @@
 <template>
   <div id="photo_pad" ref="photo_pad" style="position: fixed;top: 0;right: 0;bottom: 0;left: 0;">
     <!-- {{ photo }} -->
-    <div
-      style="position: absolute;top:0%;right:0%;background-color:rgba(0, 0, 0, 0) ;display: flex;"
+    <div class="photo_operation"
     >
-      <el-button-group>
+      <el-button-group class="normal_operation">
         <el-button
           v-if="pre_dir"
           icon="el-icon-d-arrow-left"
@@ -44,9 +43,11 @@
           v-if="read_right"
           @click="read_right=false"
         >从右向左读</el-button>
-        <el-button icon="el-icon-close" @click="toDir(dir.library_id,dir.id)"></el-button>
+       
       </el-button-group>
+       <el-button icon="el-icon-close" @click="toDir(dir.library_id,dir.id)"></el-button>
     </div>
+    
     <div
       v-if="photo.pre"
       style="position: absolute;top:50%;left:0%; height:80%; width:50% ;background:rgba(0, 0, 0, 0) ;display: flex;transform: translateY(-50%); cursor: url('/static/bt_prev.png'),pointer;"
@@ -413,4 +414,18 @@ export default {
   max-width:100%;
   box-shadow: 0 0px 32px 0 #282a32;
 }
+.photo_operation{
+  position: absolute;top:0%;right:0%;background-color:rgba(0, 0, 0, 0) ;display: flex;
+}
+
+.photo_operation:hover{
+  opacity: 1;
+}
+.normal_operation{
+  opacity: 0.2;
+}
+.normal_operation:hover{
+  opacity: 1;
+}
+
 </style>

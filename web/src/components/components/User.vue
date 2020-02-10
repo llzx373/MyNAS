@@ -3,8 +3,8 @@
   <i>
     <el-button-group>
       <!-- <el-button icon="el-icon-user-solid" @click="show_userinfo=true" circle></el-button> -->
-      <el-button style="height:60px;width:60px" icon="el-icon-s-tools" @click="show_library=true;" circle></el-button>
-      <el-button style="height:60px;width:60px" icon="el-icon-close" @click="logout" circle></el-button>
+      <el-button style="height:60px;width:60px" icon="el-icon-s-tools" @click="show_library=true;"></el-button>
+      <el-button style="height:60px;width:60px" icon="el-icon-close" @click="logout"></el-button>
     </el-button-group>
     <el-drawer
       name="library"
@@ -272,7 +272,8 @@ export default {
     },
     logout() {
       this.$cookies.set("token", null);
-      this.$cookies.set("username", null), this.$router.push("/login");
+      this.$cookies.set("username", null);
+      this.$router.push("/login");
     }
   }
 };

@@ -1,15 +1,6 @@
 <template>
   <div style="position: fixed;top: 0;right: 0;bottom: 0;left: 0;">
-    <div
-      id="mouse_info"
-      @mouseenter="enter_bar"
-      @mouseleave="leave_bar"
-      @mousedown="click_bar"
-      v-if="ffmpeg.onbar"
-      :style="'z-index:3000;width:1px;top: 80%;height:28px;text-align:center;line-height: 28px;position: fixed;left:'+ffmpeg.mouse.x+'px;background-color:#4C5061'"
-    >
-      <!-- <div style="background-color:#4C5061'">{{ffmpeg.mouse.time|formatTime}}</div> -->
-    </div>
+    
 
     <div
       style="position: absolute;top:0%;right:0%;background-color:rgba(0, 0, 0, 0) ;display: flex;z-index:2000"
@@ -38,6 +29,15 @@
       </el-dialog>
     </div>
     <div v-if="player&&ffmpeg.use" class="customProcessBar">
+      <div
+      id="mouse_info"
+      @mouseenter="enter_bar"
+      @mouseleave="leave_bar"
+      @mousedown="click_bar"
+      v-if="ffmpeg.onbar"
+      :style="'z-index:3000;width:1px;height:28px;text-align:center;line-height: 28px;position: fixed;left:'+(ffmpeg.mouse.timex+50)+'px;background-color:#4C5061'"
+    >
+    </div>
       <el-button-group v-if="ffmpeg.use" style="width:90px">
         <el-button
           size="mini"
@@ -288,7 +288,7 @@ export default {
   background-color: rgba(0, 0, 0, 0);
   display: flex;
   z-index: 2000;
-  opacity: 1;
+  opacity: 0;
   transform: translateX(-50%);
 }
 .customProcessBar:hover {

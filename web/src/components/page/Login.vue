@@ -61,6 +61,10 @@ export default {
           let form = this.loginForm;
           this.loading = true;
           var hostname=form.hostname;
+          if (hostname==null ||hostname==''){
+            hostname=window.location.protocol+"//"+window.location.hostname+":"+window.location.port
+            console.log(hostname)
+          }
           this.$cookies.set("hostname",hostname)
           axios.post("/api/login", {
               

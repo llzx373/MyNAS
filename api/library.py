@@ -2,7 +2,7 @@
 from db import Database
 import os,os.path
 from config import ignore_file,ignore_dir,file_ex2type
-
+import traceback
 import zipfile
 import rarfile
 import chardet
@@ -103,24 +103,29 @@ class Library:
         with Database() as db:
             self.new_version=self.version+1
             version=self.new_version
+            '''
+            优化insert速度处理办法如下： 直接取出当前目录下所有目录、文件后转为字典，使用in逻辑判断
+            insert之后统一update version
+            这里保留CONFLICT以备后续处理
+            '''
             def insert_directory(parentname,dirs):
                 '''
                 首先查询父目录id,如果未命中,则报错
                 然后根据父目录id入库
                 如果发现已经存在,则升级其版本id
-                注:当前仅考虑逐个insert,后续如果发现性能问题,另外考虑批量手段
                 '''
                 rows=db.select("select id from item where library_id=%s and path=%s",(self.id,parentname))
                 if not rows:
                     parent=0
                 else:
                     parent=rows[0]['id']
-
+                rows=db.select("select name,id from item where parent=%s",(parent,))
+                names={row['name']:row['id'] for row in rows}
                 for name in dirs:
-                    if name in ignore_dir:
+                    if name in ignore_dir or name in names:
                         continue
                     db.execute(f'''insert into item(name,cover,path,library_id,parent,version,item_type) values(%s,0,%s,{self.id},{parent},{version},'dir') ON CONFLICT (library_id,path) do update set version={version} ''',(name,parentname+os.path.sep+name))
-
+                db.execute("update item set version=%s where parent=%s ",(version,parent))
             def insert_files(parentname,files):
                 '''
                 首先查询父目录id,如果未命中,则报错
@@ -136,19 +141,27 @@ class Library:
                         return 
                 else:
                     parent=rows[0]['id']
+                rows=db.select("select name,id from item where parent=%s",(parent,))
+                names={row['name']:row['id'] for row in rows}
                 for name in files:
                     if name in ignore_file:
                         continue
                     if name.startswith('.'):
                         continue
                     if name.split('.')[-1].lower() in ("jpg",'png','bmp','jpeg','gif','mp4','avi','mkv','webm','flv','mov','mp3','wav','flac'):
+                        if name in names:
+                            continue
                         db.execute('''insert into item(name,path,parent,library_id,version,item_type) values(%s,%s,%s,%s,%s,'file')
                         ON CONFLICT (library_id,path) do update set version=%s ''',(name,parentname+os.path.sep+name,parent,self.id,version,version))
                     if name.split('.')[-1].lower() in ("cbz",'cbr','zip','rar'):
                         file_ex=name.split(".")[-1].lower()
                         full_path=parentname+os.path.sep+name
-                        rows=db.select(f'''insert into item(name,cover,path,library_id,parent,version,item_type,file_type) values(%s,0,%s,{self.id},{parent},{version},'dir','compress') ON CONFLICT (library_id,path) do update set version={version}  returning id ''',(name,full_path))
-                        c_id=rows[0]['id']
+                        if name not in names:
+                            rows=db.select(f'''insert into item(name,cover,path,library_id,parent,version,item_type,file_type) values(%s,0,%s,{self.id},{parent},{version},'dir','compress') ON CONFLICT (library_id,path) do update set version={version}  returning id ''',(name,full_path))
+                            c_id=rows[0]['id']
+                            db.execute("commit")
+                        else:
+                            c_id=names[name]
                         if file_ex in ("zip",'cbz'):
                             C_cls=zipfile.ZipFile
                         elif file_ex in ("rar",'cbr'):
@@ -158,21 +171,27 @@ class Library:
                             return None
                         try:
                             with C_cls(full_path) as zf:
+                                rows=db.select("select id,name from item where parent=%s",(c_id,))
+                                fnames={row['name']:row['id'] for row in rows}
                                 for fname in zf.namelist():
+                                    if fname in fnames:
+                                        continue
                                     # 处理压缩文件内部的路径问题
                                     real_name=fname.split("/")[-1]
                                     if fname in ignore_file or real_name in ignore_file:
                                         continue
                                     if fname.startswith('.') or real_name.startswith('.'):
                                         continue
-                                    if fname.startswith('_') or real_name.startswith('.'):
+                                    if fname.startswith('__') or real_name.startswith('__'):
                                         continue
                                     if fname.split('.')[-1].lower() not in ("jpg",'png','bmp','jpeg','gif'):# 目前压缩文件内仅考虑图片
                                         continue
                                     db.execute(f'''insert into item(name,cover,path,library_id,parent,version,item_type) values(%s,0,%s,{self.id},{c_id},{version},'file') ON CONFLICT (library_id,path) do update set version={version} ''',(fname,full_path+os.path.sep+fname))
+                                db.execute("update item set version=%s where parent=%s ",(version,c_id))
                                 db.execute("commit")
-                        except:
-                            print("错误的压缩文件：",full_path)
+                        except Exception as e:
+                            print("错误的压缩文件：",full_path,str(e))
+                db.execute("update item set version=%s where parent=%s ",(version,parent))
 
 
                     

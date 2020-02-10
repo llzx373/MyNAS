@@ -1,6 +1,6 @@
 # encoding=utf8
 
-pg_conninfo = "host=localhost port=5432 user=app password=app dbname=postgres"
+pg_conninfo = "host=localhost port=5432 user=app password=password dbname=mynas"
 ignore_file = ['.DS_Store', 'Thumbs.db']
 ignore_dir = ['@eaDir', '__gsdata__']
 PHOTO_BUF_SIZE = 1024000
@@ -16,13 +16,15 @@ __file_ex2type = {
     "jpg":'photo', 'png':'photo', 'bmp':'photo', 'jpeg':'photo', 'gif':'photo','zip':'compress','rar':'compress','cbz':'compress','cbr':'compress'
 }
 
-
 def file_ex2type(filename):
     ptype = filename.split('.')[-1].lower()
     return __file_ex2type.get(ptype,'file')
 
 ffmpeg_path = "/usr/local/bin/ffmpeg"
 ffprobe_path = "/usr/local/bin/ffprobe"
+# mac:h264_videotoolbox nvidia:h264_nvenc 无显卡：libx264 intel：h264_qsv
+ffmpeg_codec="h264_videotoolbox"
+
 redis_conn = {
     'host': '127.0.0.1',
     'port': 6379

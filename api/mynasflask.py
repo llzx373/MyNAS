@@ -12,7 +12,7 @@ import os
 from library import Library
 from user import User, get_password
 from book import Chapter
-from config import PHOTO_BUF_SIZE, PHOTO_CATCH, ffmpeg_path, ffprobe_path, file_ex2type
+from config import PHOTO_BUF_SIZE, PHOTO_CATCH, ffmpeg_path, ffprobe_path, file_ex2type,ffmpeg_codec
 import config
 import mimetypes
 import re
@@ -1028,7 +1028,7 @@ def ffmpeg_hls(video_id):
     video=get_file(video_id)
     ffmpeg_cache=f'{PHOTO_CATCH}/ffmpeg'
     
-    ffmpeg_command=f'{ffmpeg_path} -ss {start_time} -i "{video["path"]}" -c:a aac  -vcodec h264_videotoolbox -f hls  -bsf:v h264_mp4toannexb -hls_list_size 100 -b:v 6000k  -hls_time 10 "{ffmpeg_cache}/index.m3u8"'
+    ffmpeg_command=f'{ffmpeg_path} -ss {start_time} -i "{video["path"]}" -c:a aac  -vcodec {ffmpeg_codec} -f hls  -bsf:v h264_mp4toannexb -hls_list_size 100 -b:v 6000k  -hls_time 10 "{ffmpeg_cache}/index.m3u8"'
     shutil.rmtree(ffmpeg_cache)
     os.makedirs(ffmpeg_cache)
     executor.submit(inner_ffmpeg, ffmpeg_command)
