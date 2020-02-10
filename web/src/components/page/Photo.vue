@@ -302,7 +302,8 @@ export default {
           path: "/photos",
           query: {
             library_id: library_id,
-            dir_id: dir_id
+            dir_id: dir_id,
+            page:Math.ceil((this.photo.order_id+1)/30)
           }
         });
       } else {

@@ -225,19 +225,29 @@ def get_parent(lib_id, dir_id):
     '''
     with Database() as db:
 
-        row = db.select("select name,path from  item where library_id=%s and id=%s",
+        row = db.select("select name,path,order_id from  item where library_id=%s and id=%s",
                         (lib_id, dir_id), dict_result=True)[0]
         result = [{
             'id': dir_id,
             'name': row['name'],
+            'order_id':row['order_id'],
+            'sub_order_id':1
         }, ]
+        sub_order_id=result[0]['order_id']
         dsp = row['path'].split(os.path.sep)
         for i in range(1, len(dsp)+1):
             dname = os.path.sep.join(dsp[:-i])
-            rows = db.select("select id,name from  item where library_id=%s and path=%s",
+            rows = db.select("select id,name,order_id from  item where library_id=%s and path=%s",
                              (lib_id, dname), dict_result=True)
             if rows:
-                result.append(rows[0])
+                result.append(
+                {
+                    'id':rows[0]['id'],
+                    'name':rows[0]['name'],
+                    'order_id':rows[0]['order_id'],
+                    'sub_order_id':sub_order_id
+                })
+                sub_order_id=result[-1]['order_id']
             else:
                 continue
         result.reverse()
@@ -269,7 +279,7 @@ def get_cover_for_video(file_name, file_path):
         return None, None
 
 def get_pic_from_comress(file_id):
-    
+
     with Database() as db:
         rows=db.select("select item.name filename,item.path filepath ,parent.path parent_path,parent.file_type parent_file_type from item,item parent where item.parent=parent.id and item.id=%s",(file_id,))
         if not rows:
@@ -303,7 +313,7 @@ def get_pic_from_comress(file_id):
                 'path':path,
                 'file':None
             }
-        
+
         with C_cls(parent_path) as zf:
             return {
                 'id':file_id,
@@ -311,7 +321,7 @@ def get_pic_from_comress(file_id):
                 'path':path,
                 'file':BytesIO(zf.read(name))
             }
-            
+
 
 
 @app.route('/api/media/<int:file_id>')
@@ -981,7 +991,7 @@ def books_sync(lib_id):
     2 启动ffmppg转译hls
         1. 如果当前有ffmpeg在运行，结束进程
         2. 清空ffmpeg缓存文件夹
-        3. 启动ffmpeg 
+        3. 启动ffmpeg
 
 1. 页面请求是<videoid>.m3u8
     1. 返回m3u8文件，处理request no cache
@@ -997,7 +1007,7 @@ def inner_ffmpeg(ffmpeg_command):
     '''
     管理ffmpeg进程的状态
     '''
-    
+
     with Database() as db:
         rows=db.select("select pid from ffmpeg_info")
         for row in rows:
@@ -1027,7 +1037,7 @@ def ffmpeg_hls(video_id):
     start_time=float(start_time)
     video=get_file(video_id)
     ffmpeg_cache=f'{PHOTO_CATCH}/ffmpeg'
-    
+
     ffmpeg_command=f'{ffmpeg_path} -ss {start_time} -i "{video["path"]}" -c:a aac  -vcodec {ffmpeg_codec} -f hls  -bsf:v h264_mp4toannexb -hls_list_size 100 -b:v 6000k  -hls_time 10 "{ffmpeg_cache}/index.m3u8"'
     shutil.rmtree(ffmpeg_cache)
     os.makedirs(ffmpeg_cache)
@@ -1071,7 +1081,7 @@ def hsl_index():
     return json_return({
         'message':f"文件{file_path}没有找到，解码错误或者失败"
     })
-    
+
 @app.route('/api/video/hls/index<index_id>.ts')
 def hsl_file(index_id):
     # ffmpeg_cache=f'{PHOTO_CATCH}/ffmpeg'
@@ -1082,4 +1092,4 @@ def hsl_file(index_id):
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0',port=4999)

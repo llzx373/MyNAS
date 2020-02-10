@@ -17,7 +17,7 @@
             :to="{path:'/photos',query:{
                   library_id: fdir.library.id,
                   dir_id:parent.id,
-                  page:1
+                  page:Math.ceil((parent.sub_order_id+1)/30)
               }}"
           >{{ parent.name }}</el-breadcrumb-item>
         </el-breadcrumb>
