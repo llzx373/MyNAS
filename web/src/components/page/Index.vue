@@ -14,6 +14,8 @@ export default {
   components: {
    LibraryView
   },
-  
+  mounted() {
+      document.title = "MyNAS首页";
+  }
 };
 </script>

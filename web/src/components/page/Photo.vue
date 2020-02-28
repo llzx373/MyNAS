@@ -167,9 +167,9 @@ export default {
       var url = "";
       this.origin = this.$cookies.get("origin");
       if (this.origin == 1) {
-        url = this.$cookies.get('hostname')+"/api/media/" + photo_id + "?cache=origin";
+        url = "/api/media/" + photo_id + "?cache=origin";
       } else {
-        url = this.$cookies.get('hostname')+"/api/media/" + photo_id + "?cache=false";
+        url ="/api/media/" + photo_id + "?cache=false";
       }
       // return url
       // 这里视图走localstorage，但大小太过受限，无法处理

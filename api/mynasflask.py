@@ -24,6 +24,8 @@ from io import BytesIO
 from concurrent.futures import ThreadPoolExecutor
 import subprocess
 
+from util import json_return,not_found
+
 executor = ThreadPoolExecutor(8)
 from flask_cors import CORS
 
@@ -60,29 +62,6 @@ def flush_lib(lib_id):
 def index():
     return render_template('index.html')
 
-
-class DateEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.strftime('%Y-%m-%d %H:%M:%S')
-        elif isinstance(obj, date):
-            return obj.strftime("%Y-%m-%d")
-        else:
-            return json.JSONEncoder.default(self, obj)
-
-
-def json_return(result):
-    response = make_response(json.dumps(
-        result, ensure_ascii=False, cls=DateEncoder))
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
-    response.headers['Content-Type'] = 'text/html;charset=UTF-8'
-    return response
-
-
-def not_found(message='not found'):
-    response = make_response(message, 404)
-    return response
 
 
 def get_file(file_id):
@@ -1089,7 +1068,6 @@ def hsl_file(index_id):
     这里认为从m3u8获取到的都是有效文件
     '''
     return send_file(f'{PHOTO_CATCH}/ffmpeg/'+f'index{index_id}.ts',cache_timeout=0)
-
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0',port=4999)

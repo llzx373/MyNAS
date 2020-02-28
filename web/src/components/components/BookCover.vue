@@ -47,7 +47,7 @@ export default {
   data() {
     return {
       disable_up:true,
-      imgsrc:this.$cookies.get('hostname')+
+      imgsrc:
         "/api/chapter/" +
         this.chapter.library_id +
         "/" +
@@ -90,7 +90,7 @@ export default {
               }
             )
             .then(response => {
-                this.imgsrc =this.$cookies.get('hostname')+
+                this.imgsrc =
                 "/api/chapter/" +
                 this.chapter.library_id +
                 "/" +

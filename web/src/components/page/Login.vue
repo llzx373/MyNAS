@@ -3,9 +3,6 @@
     
     <div class="loginDialog"><h3 class="loginTitle">MyNAS by llzx373</h3>
       <el-form :model="loginForm" ref="loginForm" :rules="rules">
-        <el-form-item prop="hostname">
-          <el-input type="text" v-model="loginForm.hostname" placeholder="服务器地址"></el-input>
-        </el-form-item>
         <el-form-item prop="username">
           <el-input type="text" v-model="loginForm.username" placeholder="用户名"></el-input>
         </el-form-item>
@@ -37,8 +34,7 @@ export default {
     return {
       loginForm: {
         username: "",
-        password: "",
-        hostname:this.$cookies.get("hostname")
+        password: ""
       },
       rules: {
         username: [
@@ -60,12 +56,6 @@ export default {
         if (valid) {
           let form = this.loginForm;
           this.loading = true;
-          var hostname=form.hostname;
-          if (hostname==null ||hostname==''){
-            hostname=window.location.protocol+"//"+window.location.hostname+":"+window.location.port
-            console.log(hostname)
-          }
-          this.$cookies.set("hostname",hostname)
           axios.post("/api/login", {
               
               username: form.username,

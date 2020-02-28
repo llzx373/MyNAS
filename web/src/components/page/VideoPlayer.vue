@@ -23,7 +23,7 @@
       </el-button-group>
       <el-dialog title="提示" :visible.sync="show_info" width="30%" :modal="false">
         <a
-          :href="$cookies.get('hostname')+'/api/media/' + $route.query.video_id + '?cache=origin'"
+          :href="'/api/media/' + $route.query.video_id + '?cache=origin'"
         >{{this.video_src.name}}</a>
         <span>{{video_info}}</span>
       </el-dialog>
@@ -91,12 +91,6 @@
         ref="videoPlayer"
         class="video-js"
       ></video>
-      <!-- <video
-        style="margin-top: 0px; height: 100%;
-  width:100%;box-shadow: 0 0px 32px 0 #282a32;"
-      :src="this.$cookies.get('hostname')+'/api/media/' + this.$route.query.video_id + '?cache=origin'"
-        controls="controls"
-      ></video>-->
     </div>
   </div>
 </template>
@@ -191,7 +185,7 @@ export default {
           // console.log(this.$refs.videoPlayer)
           this.player.src([
             {
-              src: this.$cookies.get("hostname") + "/api/video/hls/index.m3u8",
+              src: "/api/video/hls/index.m3u8",
               type: "application/x-mpegURL"
             }
           ]);
@@ -241,7 +235,6 @@ export default {
       this.player.src([
         {
           src:
-            this.$cookies.get("hostname") +
             "/api/media/" +
             this.$route.query.video_id +
             "?cache=origin",
@@ -264,7 +257,6 @@ export default {
         this.options.sources = [
           {
             src:
-              this.$cookies.get("hostname") +
               "/api/media/" +
               this.$route.query.video_id +
               "?cache=origin",

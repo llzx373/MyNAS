@@ -21,18 +21,21 @@
               }}"
           >{{ parent.name }}</el-breadcrumb-item>
         </el-breadcrumb>
+       
         <div>
           <el-divider content-position="left">
             <el-link :disabled="page<=1" @click="goPage(page-1)">上一页</el-link>
             {{page}} / {{page_count}}
             <el-link :disabled="page>=page_count" @click="goPage(page+1)">下一页</el-link>
           </el-divider>
+          
           <Items v-if="fdir.items" :items="fdir.items" :screenWidth="screenWidth"></Items>
           <el-divider content-position="left">
             <el-link :disabled="page<=1" @click="goPage(page-1)">上一页</el-link>
             {{page}} / {{page_count}}
             <el-link :disabled="page>=page_count" @click="goPage(page+1)">下一页</el-link>
           </el-divider>
+          
         </div>
       </el-tab-pane>
       <el-tab-pane label="资源视图" name="library_view">
@@ -139,7 +142,7 @@ export default {
         .then(response => {
           this.fdir = response.data;
           if (dir_id == 0) {
-            document.title = "库目录";
+            document.title = this.fdir.library.name;
           } else {
             document.title = this.fdir.dir.name;
           }

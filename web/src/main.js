@@ -29,23 +29,6 @@ router.beforeEach((to, from, next) => {
     next();
   }
 })
-axios.interceptors.request.use(
-  config => {
-    // var hostname=$cookies.get("hostname")
-    // var hostport=hostname.split(':')
-    // config.proxy={
-    //   host: hostport[0],
-    //   port: Number(hostport[1]),
-    // }
-    // config.baseURL="http://192.168.1.7:4999/"
-    config.baseURL=$cookies.get("hostname")
-    config.headers={
-      'Content-Type':'application/x-www-form-urlencoded'
-  }
-    // console.log(config)
-    return config
-  }
-)
 axios.interceptors.response.use(function (response) {
   if (response.config.url.endsWith('/api/login')){
     return response

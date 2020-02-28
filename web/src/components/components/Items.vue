@@ -13,7 +13,7 @@
               fit="contain"
            
               :style="'width:100%;cursor:pointer'"
-              :src="$cookies.get('hostname')+'/api/media/'+col.cover"
+              :src="'/api/media/'+col.cover"
               @click="$router.push({path:'/photos',query:{
                   library_id: col.library_id,
                   dir_id:col.id,
@@ -43,7 +43,7 @@
               fit="contain"
             
               :style="'width:240px;cursor:pointer'"
-              :src="$cookies.get('hostname')+'/api/media/'+col.id"
+              :src="'/api/media/'+col.id"
               @click="goMedia(col)"
             ></el-image>
             <div class="bottom">
@@ -53,7 +53,6 @@
                 type="primary"
                 :style="'width:100%;'"
               >{{ col.name }}</el-link>
-              <!-- <a :href="$cookies.get('hostname')+'/api/media/' + col.id + '?cache=origin'">{{ col.name }}</a> -->
             </div>
           </el-card>
           <BookCover :chapter="col" :width="width" :height="height"></BookCover>
