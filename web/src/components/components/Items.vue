@@ -22,6 +22,7 @@
             ></el-image>
             <div class="bottom">
               <el-link
+               :href="'/#/photos?library_id='+col.library_id+'&dir_id='+col.id+'&tab=dir_view'"
                type="primary"
                 icon="el-icon-folder-opened"
                 @click="$router.push({path:'/photos',query:{
