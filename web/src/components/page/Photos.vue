@@ -39,7 +39,7 @@
         </div>
       </el-tab-pane>
       <el-tab-pane label="资源视图" name="library_view">
-        <LibraryView :library_id="$route.query.library_id"></LibraryView>
+        <LibraryView :library_id="$route.query.library_id" :init_items='false' ></LibraryView>
         </el-tab-pane>
     </el-tabs>
   <!-- </el-main> -->

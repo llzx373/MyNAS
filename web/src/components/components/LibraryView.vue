@@ -16,6 +16,12 @@
         <el-option label="目录" value="dir"></el-option>
         <el-option label="文件" value="file"></el-option>
       </el-select>
+      <el-form-item  v-if="search_item_type=='dir'" label="目录下最少条目数:">
+       <el-input 
+        style="width:100px"
+        v-model="item_count"
+      ></el-input>
+      </el-form-item>
        <el-select  style="width:100px" v-if="search_item_type=='file'" v-model="search_file_type" placeholder="文件类型">
         <el-option label="视频" value="video"></el-option>
         <el-option label="图片" value="photo"></el-option>
@@ -50,7 +56,8 @@ import ThumbSize from "../../components/components/ThumbSize";
 export default {
   name: "LibraryView",
   props: {
-    library_id: null
+    library_id: null,
+    init_items: false
   },
   data() {
     return {
@@ -64,7 +71,8 @@ export default {
       search_count: 12,
       search_range: "all",
       recent_num:1000,
-      search_file_type:"video"
+      search_file_type:"video",
+      item_count:0
     };
   },
   components: {
@@ -78,7 +86,10 @@ export default {
         this.screenWidth = document.body.clientWidth;
       })();
     };
-    this.random();
+    if (this.init_items){
+      this.random();
+    }
+    
   },
   methods: {
     search() {
@@ -117,6 +128,10 @@ export default {
       if (lib_id != null) {
         url=url+"&library=" + lib_id
         
+      }
+      var item_count=this.item_count;
+      if (item_count!=null){
+        url=url+"&item_count=" + item_count
       }
       axios.get(url).then(response => {
           this.items = response.data;

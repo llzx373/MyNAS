@@ -1,5 +1,5 @@
 <template>
-  <LibraryView></LibraryView>
+  <LibraryView  :init_items='true'></LibraryView>
 </template>
 
 <script>
