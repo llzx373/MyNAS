@@ -124,8 +124,8 @@ class Library:
                 for name in dirs:
                     if name in ignore_dir or name in names:
                         continue
-                    db.execute(f'''insert into item(name,cover,path,library_id,parent,version,item_type) values(%s,0,%s,{self.id},{parent},{version},'dir') ON CONFLICT (library_id,path) do update set version={version} ''',(name,parentname+os.path.sep+name))
-                db.execute("update item set version=%s where parent=%s ",(version,parent))
+                    db.execute(f'''insert into item(name,cover,path,library_id,parent,version,item_type) values(%s,0,%s,{self.id},{parent},{version},'dir') ''',(name,parentname+os.path.sep+name))
+                #db.execute("update item set version=%s where parent=%s ",(version,parent))
             def insert_files(parentname,files):
                 '''
                 首先查询父目录id,如果未命中,则报错
@@ -151,13 +151,13 @@ class Library:
                     if name.split('.')[-1].lower() in ("jpg",'png','bmp','jpeg','gif','mp4','avi','mkv','webm','flv','mov','mp3','wav','flac'):
                         if name in names:
                             continue
-                        db.execute('''insert into item(name,path,parent,library_id,version,item_type) values(%s,%s,%s,%s,%s,'file')
-                        ON CONFLICT (library_id,path) do update set version=%s ''',(name,parentname+os.path.sep+name,parent,self.id,version,version))
+                        db.execute('''insert into item(name,path,parent,library_id,version,item_type) values(%s,%s,%s,%s,%s,'file')''',(name,parentname+os.path.sep+name,parent,self.id,version))
                     if name.split('.')[-1].lower() in ("cbz",'cbr','zip','rar'):
                         file_ex=name.split(".")[-1].lower()
                         full_path=parentname+os.path.sep+name
                         if name not in names:
-                            rows=db.select(f'''insert into item(name,cover,path,library_id,parent,version,item_type,file_type) values(%s,0,%s,{self.id},{parent},{version},'dir','compress') ON CONFLICT (library_id,path) do update set version={version}  returning id ''',(name,full_path))
+                            rows=db.select(f'''insert into item(name,cover,path,library_id,parent,version,item_type,file_type) values(%s,0,%s,{self.id},{parent},{version},'dir','compress') returning id ''',(name,full_path))
+
                             c_id=rows[0]['id']
                             db.execute("commit")
                         else:
@@ -186,12 +186,12 @@ class Library:
                                         continue
                                     if fname.split('.')[-1].lower() not in ("jpg",'png','bmp','jpeg','gif'):# 目前压缩文件内仅考虑图片
                                         continue
-                                    db.execute(f'''insert into item(name,cover,path,library_id,parent,version,item_type) values(%s,0,%s,{self.id},{c_id},{version},'file') ON CONFLICT (library_id,path) do update set version={version} ''',(fname,full_path+os.path.sep+fname))
-                                db.execute("update item set version=%s where parent=%s ",(version,c_id))
+                                    db.execute(f'''insert into item(name,cover,path,library_id,parent,version,item_type) values(%s,0,%s,{self.id},{c_id},{version},'file') ''',(fname,full_path+os.path.sep+fname))
+                                #db.execute("update item set version=%s where parent=%s ",(version,c_id))
                                 db.execute("commit")
                         except Exception as e:
                             print("错误的压缩文件：",full_path,str(e))
-                db.execute("update item set version=%s where parent=%s ",(version,parent))
+                #db.execute("update item set version=%s where parent=%s ",(version,parent))
 
 
                     
@@ -204,7 +204,7 @@ class Library:
                 insert_directory(root,dirs)
                 insert_files(root,files)
                 db.execute("commit")
-            db.execute("delete from item where library_id=%s and version=%s",(self.id,self.version))
+            #db.execute("delete from item where library_id=%s and version=%s",(self.id,self.version))
             db.execute("commit")
 
 
@@ -236,9 +236,13 @@ class Library:
                         if item['parent_file_type']=='compress':
                             db.execute("update item set file_type=%s where id=%s",(file_ex2type(item['name']),item['id']))
                         else:
-                            stat=os.stat(item['path'])
-                            db.execute("update item set ctime=to_timestamp(%s),utime=to_timestamp(%s),file_type=%s where id=%s",(stat.st_ctime,stat.st_mtime,file_ex2type(item['name']),item['id']))
-
+                            try:
+                                stat=os.stat(item['path'])
+                                db.execute("update item set ctime=to_timestamp(%s),utime=to_timestamp(%s),file_type=%s where id=%s",(stat.st_ctime,stat.st_mtime,file_ex2type(item['name']),item['id']))
+                            except FileNotFoundError:
+                                db.execute("delete from item where id=%s",(item['id'],))
+                                print("Delete item:",item)
+                    db.execute('commit')
 
     @staticmethod
     def get(library_id):
@@ -255,9 +259,9 @@ class Library:
         rList=[]
         with Database() as db:
             if name:
-                rows=db.select("select id,name,dir,status,version,library_type from library where name like %s order by id",(name,))
+                rows=db.select("select id,name,dir,status,version,lib_type from library where name like %s order by id",(name,))
             else:
-                rows=db.select("select id,name,dir,status,version,library_type from library order by id")
+                rows=db.select("select id,name,dir,status,version,lib_type from library order by id")
             for row in rows:
                 rList.append(Library(row['id'],row['name'],row['dir'],row['status'],row['version']))
         return rList
@@ -279,7 +283,7 @@ class Library:
     
 if __name__ == "__main__":
     # Library.add("photos",'/Users/liuwei/comic/[G-Power! (SASAYUKi)]','photo','','','jpg,gif')
-    lib=Library.get(8)
+    lib=Library.get(23)
     # lib.id=100
     lib.sync()
     #with zipfile.ZipFile("/data1/data/psiupuxa.zip") as zf:

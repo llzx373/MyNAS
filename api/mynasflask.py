@@ -7,7 +7,7 @@ from datetime import date, datetime
 import hashlib
 import json
 from db import Database
-from cache import cache_wrapper
+from cache import cache_wrapper,DateEncoder
 import os
 from library import Library
 from user import User, get_password
@@ -17,13 +17,14 @@ import config
 import mimetypes
 import re
 from PIL import Image
+#from wand.image import Image
 import random
 import zipfile
 import rarfile
 from io import BytesIO
 from concurrent.futures import ThreadPoolExecutor
 import subprocess
-
+import natsort
 from util import json_return,not_found
 
 executor = ThreadPoolExecutor(8)
@@ -57,7 +58,22 @@ def flush_lib(lib_id):
         'message': "已经开始执行同步任务"
     }
 
-
+def cache_next(sql):
+    import redis
+    from config import redis_conn
+    conn=redis.Redis(**redis_conn)
+    value=conn.get(sql)
+    def inner_cache_next(sql):
+        with Database() as db:
+            result=db.select(sql)
+            json_result=json.dumps(result, ensure_ascii=False,cls=DateEncoder)
+            conn.set(sql, json_result,3600)
+            return result
+    if value:
+        executor.submit(inner_cache_next, sql)
+        return json.loads(value)
+    return inner_cache_next(sql)
+    
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -73,8 +89,8 @@ def get_file(file_id):
 
 def sub_items(lib_id, dir_id, items_per_page=36, page=1):
     with Database() as db:
-        count = db.select("select count(1) c from item where library_id=%s and parent=%s and order_id=-1",
-                          (lib_id, dir_id), dict_result=True)[0]['c']
+        count = db.select("select count(1) c from item where parent=%s and order_id=-1",
+                          (dir_id,), dict_result=True)[0]['c']
 
         '''
         很多文件命名混乱,此处重排
@@ -85,11 +101,6 @@ def sub_items(lib_id, dir_id, items_per_page=36, page=1):
             对于只有一个数字的，直接排序
             多个数字的，分别处理，目前仅考虑最大有4个数字的
         '''
-        num_0 = []
-        num_1 = []
-        num_2 = []
-        num_3 = []
-        num_4 = []
         if count == 0:
             offset = (page-1)*items_per_page
             return db.select("select id,name,item_type,cover,order_id,library_id,file_type from item where library_id=%s and parent=%s order by order_id limit %s offset %s", (lib_id, dir_id, items_per_page, offset), dict_result=True)
@@ -105,63 +116,19 @@ def sub_items(lib_id, dir_id, items_per_page=36, page=1):
                     'name': row['name']
                 }
             )
-        items.sort(key=lambda k: k['name'])
+        items=natsort.os_sorted(items,key=lambda k: k['name'])
         rows = db.select("select id,name,order_id from item where library_id=%s and parent=%s and item_type='file'",
                          (lib_id, dir_id), dict_result=True)
+        file_items=[]
         for row in rows:
-            rf = re.findall('([\d]+)', row['name'])
-            if not rf:
-                num_0.append({
+            file_items.append(
+                {
                     'id': row['id'],
-                    'name': row['name'],
-                    'sort_key': row['name']
-                })
-                continue
-            rf = [int(x) for x in rf]
-            if len(rf) == 1:
-                num_1.append({
-                    'id': row['id'],
-                    'name': row['name'],
-                    'sort_key': rf[0]
-                })
-            elif len(rf) == 2:
-                num_2.append({
-                    'id': row['id'],
-                    'name': row['name'],
-                    'sort_key': rf
-                })
-            elif len(rf) == 3:
-                num_3.append({
-                    'id': row['id'],
-                    'name': row['name'],
-                    'sort_key': rf
-                })
-            elif len(rf) == 4:
-                num_4.append({
-                    'id': row['id'],
-                    'name': row['name'],
-                    'sort_key': rf
-                })
-            else:
-                num_0.append({
-                    'id': row['id'],
-                    'name': row['name'],
-                    'sort_key': row['name']
-                })
-        num_0.sort(key=lambda k: k['sort_key'])
-        num_1.sort(key=lambda k: k['sort_key'])
-        num_2.sort(key=lambda k: ''.join(
-            [str(x).zfill(8) for x in k['sort_key']]))
-        num_3.sort(key=lambda k: ''.join(
-            [str(x).zfill(8) for x in k['sort_key']]))
-        num_4.sort(key=lambda k: ''.join(
-            [str(x).zfill(8) for x in k['sort_key']]))
-        items.extend(num_0)
-        items.extend(num_1)
-        items.extend(num_2)
-        items.extend(num_3)
-        items.extend(num_4)
-
+                    'name': row['name']
+                }
+            )
+        file_items=natsort.os_sorted(file_items,key=lambda k: k['name'])
+        items.extend(file_items)
         for i, item in enumerate(items):
             db.execute('update item set order_id=%s where id=%s',
                        (i, item['id']))
@@ -320,20 +287,30 @@ def photo(file_id):
         ptype = file_name.split('.')[-1]
         file_path = photo_file['path']
         img_open=photo_file['file'] if photo_file['file'] is not None else file_path
+        
         if file_ex2type(file_name) == 'video':
             return get_cover_for_video(file_name, file_path)
-
+        if file_ex2type(file_name) == 'music':
+            return send_file(file_path, mimetype=mimetypes.guess_type(file_name)[0], as_attachment=True, conditional=True)
         cn = hashlib.md5(file_path.encode()).hexdigest()
         cache = PHOTO_CATCH+f"/{cn}.{ptype}"
         if not os.path.exists(cache):
-            with Image.open(img_open) as img:
-                width, height = img.size
-                widpct = width*1.0/240
-                heightpct = height*1.0/320
-                dest_pct = max([widpct, heightpct])
-                resized_im = img.resize(
-                    (int(width/dest_pct), int(height/dest_pct)))
+            img= Image.open(photo_file['file']) if photo_file['file'] is not None else Image.open(img_open)
+            img.compression_quality = 50
+            width, height = img.size
+            widpct = width*1.0/480
+            heightpct = height*1.0/640
+            dest_pct = max([widpct, heightpct])
+            resized_im = img.resize((
+            int(width/dest_pct), int(height/dest_pct)),Image.HAMMING)
+            try:
                 resized_im.save(cache)
+            except:
+                resized_im=resized_im.convert("RGB")
+                resized_im.save(cache)
+            resized_im.close()
+            img.close()
+            
         if cached_photo:
             return file_name, cache
         else:
@@ -343,12 +320,18 @@ def photo(file_id):
             '''
             re_cache = PHOTO_CATCH+f"/{cn}.1024.{ptype}"
             if not os.path.exists(re_cache):
-                with Image.open(img_open) as img:
-                    width, height = img.size
-                    dest_pct = height*1.0/1024
-                    resized_im = img.resize(
-                        (int(width/dest_pct), int(height/dest_pct)))
+                img= Image.open(photo_file['file']) if photo_file['file'] is not None else Image.open(img_open)
+                img.compression_quality = 50
+                width, height = img.size
+                dest_pct = height*1.0/1024
+                resized_im = img.resize((int(width/dest_pct), int(height/dest_pct)),Image.HAMMING)
+                try:
                     resized_im.save(re_cache)
+                except:
+                    resized_im=resized_im.convert("RGB")
+                    resized_im.save(re_cache)
+                resized_im.close()
+                img.close()
             return file_name, re_cache
     file_name, file_path = cached_file(file_id)
     '''
@@ -482,6 +465,7 @@ def random_item():
     count = int(request.args.get("count", "12"))
     library = int(request.args.get("library", "0"))
     item_type = request.args.get("item_type", "dir")
+    item_count=int(request.args.get("item_count", "0"))
     if item_type not in ('file', 'dir'):
         return json_return({
             'message': f"error request for item_type:{item_type}"
@@ -502,12 +486,14 @@ def random_item():
             sql += f" and library_id={library}"
         if file_type:
             sql += f" and file_type='{file_type}'"
+        if item_count:
+            sql += f" and item_count>={item_count}"
         if new_add:
             sql = f"select * from ( {sql} order by id desc limit {new_add}) x order by random() limit {count}"
         else:
             sql+=f" order by random() limit {count}"
         return json_return(
-            db.select(sql)
+            cache_next(sql)
         )
 
 
@@ -525,10 +511,10 @@ def search():
     with Database() as db:
         if library:
             rows = db.select(
-                "select id,name,cover,path,library_id,item_type,version,parent from item where library_id=%s  and item_type=%s and name ilike %s order by name limit %s", (library, item_type, keyword, count,))
+                "select id,name,cover,path,library_id,item_type,version,parent from item where library_id=%s  and item_type=%s and name ilike %s limit %s", (library, item_type, keyword, count,))
         else:
             rows = db.select(
-                "select id,name,cover,path,library_id,item_type,version,parent from item  where item_type=%s and name ilike %s order by name limit %s", (item_type, keyword, count,))
+                "select id,name,cover,path,library_id,item_type,version,parent from item  where item_type=%s and name like %s order by name limit %s", (item_type, keyword, count,))
     return json_return(
         rows
     )
@@ -738,6 +724,7 @@ def changeAuth():
 @app.route('/api/login', methods=['POST', ])
 def login():
     data = request.get_data()
+    print((data,))
     json_data = json.loads(data.decode('utf8'))
     username = json_data['username']
     password = json_data['password']
@@ -1070,4 +1057,4 @@ def hsl_file(index_id):
     return send_file(f'{PHOTO_CATCH}/ffmpeg/'+f'index{index_id}.ts',cache_timeout=0)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0',port=4999)
+    app.run(host='0.0.0.0',port=5001)
